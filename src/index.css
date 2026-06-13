@@ -1,0 +1,359 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── CSS Variables ─────────────────────────────────────────────────────────── */
+:root {
+  --forest: #1B4332;
+  --forest-light: #2D6A4F;
+  --mint: #52B788;
+  --mint-light: #74C69D;
+  --amber: #F4A261;
+  --offwhite: #F8F9FA;
+  --bg-dark: #0C1F16;
+  --bg-card: rgba(27, 67, 50, 0.7);
+  --border-color: rgba(82, 183, 136, 0.2);
+}
+
+/* ─── Base ───────────────────────────────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: #0C1F16;
+  color: #F8F9FA;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0C1F16;
+}
+::-webkit-scrollbar-thumb {
+  background: #2D6A4F;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #52B788;
+}
+
+/* ─── Glass Morphism ─────────────────────────────────────────────────────────── */
+.glass {
+  background: rgba(27, 67, 50, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(82, 183, 136, 0.2);
+}
+
+.glass-dark {
+  background: rgba(12, 31, 22, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(82, 183, 136, 0.15);
+}
+
+/* ─── Card ───────────────────────────────────────────────────────────────────── */
+.card {
+  background: rgba(27, 67, 50, 0.5);
+  border: 1px solid rgba(82, 183, 136, 0.2);
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  border-color: rgba(82, 183, 136, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  transform: translateY(-2px);
+}
+
+/* ─── Gradient Text ──────────────────────────────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, #52B788, #74C69D);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-amber {
+  background: linear-gradient(135deg, #F4A261, #E76F51);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Buttons ────────────────────────────────────────────────────────────────── */
+.btn-primary {
+  background: linear-gradient(135deg, #52B788, #2D9B68);
+  color: white;
+  font-weight: 600;
+  padding: 12px 28px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  box-shadow: 0 4px 20px rgba(82, 183, 136, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 28px rgba(82, 183, 136, 0.5);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: #52B788;
+  font-weight: 600;
+  padding: 11px 28px;
+  border-radius: 12px;
+  border: 1px solid rgba(82, 183, 136, 0.4);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+}
+
+.btn-secondary:hover {
+  background: rgba(82, 183, 136, 0.1);
+  border-color: #52B788;
+}
+
+/* ─── Particle Canvas ────────────────────────────────────────────────────────── */
+#particle-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* ─── Gauge Chart ────────────────────────────────────────────────────────────── */
+.gauge-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ─── Progress Bars ──────────────────────────────────────────────────────────── */
+.progress-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(82, 183, 136, 0.15);
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 1s ease;
+}
+
+/* ─── Heatmap ────────────────────────────────────────────────────────────────── */
+.heatmap-cell {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.heatmap-cell:hover {
+  transform: scale(1.2);
+}
+
+/* ─── Step Indicator ─────────────────────────────────────────────────────────── */
+.step-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+/* ─── Recharts Customization ─────────────────────────────────────────────────── */
+.recharts-tooltip-wrapper {
+  outline: none !important;
+}
+
+.recharts-default-tooltip {
+  background: rgba(12, 31, 22, 0.95) !important;
+  border: 1px solid rgba(82, 183, 136, 0.3) !important;
+  border-radius: 8px !important;
+  color: #F8F9FA !important;
+}
+
+/* ─── Animations ─────────────────────────────────────────────────────────────── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes strokeAnim {
+  from { stroke-dashoffset: var(--total); }
+  to { stroke-dashoffset: var(--offset); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Focus Visible (Keyboard A11y) ────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid #52B788;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid #52B788;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 4px rgba(82, 183, 136, 0.2);
+}
+
+.animate-float { animation: float 6s ease-in-out infinite; }
+.animate-fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
+.animate-slide-in-left { animation: slideInLeft 0.5s ease-out forwards; }
+.animate-slide-in-right { animation: slideInRight 0.5s ease-out forwards; }
+.animate-scale-in { animation: scaleIn 0.4s ease-out forwards; }
+
+/* Delay utilities */
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-400 { animation-delay: 0.4s; }
+.delay-500 { animation-delay: 0.5s; }
+
+/* ─── Loading Skeleton ───────────────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, rgba(82,183,136,0.1) 25%, rgba(82,183,136,0.2) 50%, rgba(82,183,136,0.1) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+/* ─── Input Styles ───────────────────────────────────────────────────────────── */
+.form-input {
+  width: 100%;
+  background: rgba(12, 31, 22, 0.6);
+  border: 1px solid rgba(82, 183, 136, 0.3);
+  border-radius: 10px;
+  color: #F8F9FA;
+  padding: 12px 16px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.form-input:focus {
+  border-color: #52B788;
+  box-shadow: 0 0 0 3px rgba(82, 183, 136, 0.15);
+}
+
+.form-input option {
+  background: #1B4332;
+  color: #F8F9FA;
+}
+
+/* ─── Badge ──────────────────────────────────────────────────────────────────── */
+.badge-earned {
+  background: linear-gradient(135deg, rgba(82, 183, 136, 0.2), rgba(45, 155, 104, 0.2));
+  border: 1px solid rgba(82, 183, 136, 0.5);
+}
+
+.badge-locked {
+  filter: grayscale(0.8) opacity(0.4);
+}
+
+/* ─── Navbar ─────────────────────────────────────────────────────────────────── */
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(248, 249, 250, 0.7);
+  text-decoration: none;
+}
+
+.nav-link:hover {
+  background: rgba(82, 183, 136, 0.1);
+  color: #F8F9FA;
+}
+
+.nav-link.active {
+  background: rgba(82, 183, 136, 0.2);
+  color: #52B788;
+  font-weight: 600;
+}
+
+/* ─── Difficulty Badges ──────────────────────────────────────────────────────── */
+.diff-easy {
+  background: rgba(82, 183, 136, 0.2);
+  color: #52B788;
+  border: 1px solid rgba(82, 183, 136, 0.4);
+}
+
+.diff-medium {
+  background: rgba(244, 162, 97, 0.2);
+  color: #F4A261;
+  border: 1px solid rgba(244, 162, 97, 0.4);
+}
+
+.diff-hard {
+  background: rgba(230, 57, 70, 0.2);
+  color: #E63946;
+  border: 1px solid rgba(230, 57, 70, 0.4);
+}
