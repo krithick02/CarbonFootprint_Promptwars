@@ -1,8 +1,17 @@
 /**
  * Claude API client for generating personalized carbon reduction tips.
- * Uses the Anthropic claude-sonnet-4-6 model.
+ * Uses the Anthropic claude-sonnet-4-5 model.
  * API key is read from VITE_ANTHROPIC_API_KEY env var, or passed directly.
+ *
+ * Security notes:
+ *  - All user-supplied values are sanitized before being embedded in the prompt.
+ *  - Requests time out after 30 seconds to avoid hanging indefinitely.
  */
+
+import { sanitizeString, clampNumber, sanitizeProfile } from './sanitize.js';
+
+/** Maximum time (ms) to wait for the API before aborting. */
+const REQUEST_TIMEOUT_MS = 30_000;
 
 export async function generateTips({ profile, baseline, topCategories, apiKey }) {
   const key = apiKey || import.meta.env.VITE_ANTHROPIC_API_KEY || '';
@@ -11,18 +20,29 @@ export async function generateTips({ profile, baseline, topCategories, apiKey })
     throw new Error('NO_API_KEY');
   }
 
-  const categoryDescriptions = topCategories
+  // ── Sanitize inputs ─────────────────────────────────────────────────────────
+  const safeProfile = sanitizeProfile(profile);
+  const safeBaseline = clampNumber(baseline, 0, 1_000_000, 0);
+
+  const safeCategories = Array.isArray(topCategories)
+    ? topCategories.slice(0, 5).map((c) => ({
+        name: sanitizeString(c?.name, 30),
+        value: clampNumber(c?.value, 0, 100_000, 0),
+      }))
+    : [];
+
+  const categoryDescriptions = safeCategories
     .map((c) => `${c.name} (${c.value} kg CO₂/month)`)
     .join(', ');
 
-  const profileSummary = profile
-    ? `Country: ${profile.country || 'Unknown'}, Household size: ${profile.householdSize || 1}, Diet: ${profile.diet?.type || 'omnivore'}, Primary transport: ${profile.transport?.primaryMode || 'car'}, Energy source: ${profile.energy?.source || 'mixed'}.`
+  const profileSummary = safeProfile
+    ? `Country: ${safeProfile.country || 'Unknown'}, Household size: ${safeProfile.householdSize || 1}, Diet: ${safeProfile.diet?.type || 'omnivore'}, Primary transport: ${safeProfile.transport?.primaryMode || 'car'}, Energy source: ${safeProfile.energy?.source || 'mixed'}.`
     : 'Unknown profile.';
 
   const prompt = `You are a friendly carbon footprint reduction expert. Based on the user's profile and top emission categories, generate exactly 5 personalized, actionable tips to reduce their carbon footprint.
 
 User Profile: ${profileSummary}
-Annual baseline: ${baseline ? Math.round(baseline / 1000 * 100) / 100 : '?'} tonnes CO₂/year
+Annual baseline: ${safeBaseline > 0 ? Math.round((safeBaseline / 1000) * 100) / 100 : '?'} tonnes CO₂/year
 Top emission categories: ${categoryDescriptions}
 
 Return your response as a valid JSON array with exactly 5 objects, each with this structure:
@@ -38,25 +58,35 @@ Return your response as a valid JSON array with exactly 5 objects, each with thi
 
 Make the tips specific to the user's highest emission categories. Be encouraging and practical. Return only the JSON array, no other text.`;
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': key,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-5',
-      max_tokens: 1500,
-      messages: [
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-    }),
-  });
+  // ── Fetch with timeout ──────────────────────────────────────────────────────
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let response;
+  try {
+    response = await fetch('https://api.anthropic.com/v1/messages', {
+      signal: controller.signal,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 1500,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+  } catch (fetchErr) {
+    if (fetchErr.name === 'AbortError') {
+      throw new Error('REQUEST_TIMEOUT', { cause: fetchErr });
+    }
+    throw new Error(`NETWORK_ERROR: ${fetchErr.message}`, { cause: fetchErr });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     const errText = await response.text();

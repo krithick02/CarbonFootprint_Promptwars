@@ -58,10 +58,18 @@ export default function GaugeChart({ value, max = 500, size = 220, label = 'kg C
 
   const color = getColor();
 
+  const impactLabel = ratio < 0.4 ? 'Low Impact' : ratio < 0.7 ? 'Moderate' : 'High Impact';
+  const ariaLabel = `Monthly carbon footprint gauge: ${Math.round(animatedValue)} of ${max} kg CO₂ per month. ${impactLabel}.`;
+
   return (
     <div className="flex flex-col items-center">
-      <div className="relative" style={{ width: size, height: size }}>
-        <svg width={size} height={size}>
+      <div
+        className="relative"
+        style={{ width: size, height: size }}
+        role="img"
+        aria-label={ariaLabel}
+      >
+        <svg width={size} height={size} aria-hidden="true">
           <defs>
             <filter id="glow-filter">
               <feGaussianBlur stdDeviation="4" result="coloredBlur" />
@@ -94,7 +102,7 @@ export default function GaugeChart({ value, max = 500, size = 220, label = 'kg C
             />
           )}
 
-          {/* Tick marks */}
+          {/* Tick marks — decorative only */}
           {[0, 0.25, 0.5, 0.75, 1].map((t) => {
             const angle = toRad(startAngle + sweepAngle * t);
             const innerR = radius - strokeWidth;
@@ -108,6 +116,7 @@ export default function GaugeChart({ value, max = 500, size = 220, label = 'kg C
                 y2={cy + outerR * Math.sin(angle)}
                 stroke="rgba(82, 183, 136, 0.3)"
                 strokeWidth={2}
+                aria-hidden="true"
               />
             );
           })}
@@ -130,7 +139,7 @@ export default function GaugeChart({ value, max = 500, size = 220, label = 'kg C
               border: `1px solid ${color}44`,
             }}
           >
-            {ratio < 0.4 ? 'Low Impact' : ratio < 0.7 ? 'Moderate' : 'High Impact'}
+            {impactLabel}
           </div>
         </div>
       </div>

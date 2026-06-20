@@ -1,7 +1,15 @@
 import { EMISSION_FACTORS, DIET_DAILY, ENERGY_MULTIPLIERS } from '../data/constants';
 
 /**
- * Calculate annual baseline CO₂ in kg from onboarding profile
+ * Daily CO₂ threshold (kg) for a "green" day.
+ * Derived from the global average annual footprint of ~4 t / 365 days ≈ 11 kg/day.
+ */
+export const GREEN_THRESHOLD = 11;
+
+/**
+ * Calculate annual baseline CO₂ in kg from onboarding profile.
+ * @param {object|null} profile
+ * @returns {0 | { total: number, breakdown: { transport: number, food: number, energy: number, shopping: number } }}
  */
 export function calculateBaseline(profile) {
   if (!profile) return 0;
@@ -49,7 +57,10 @@ export function calculateBaseline(profile) {
 }
 
 /**
- * Calculate CO₂ for a single activity log entry (in kg)
+ * Calculate CO₂ for a single activity log entry (in kg).
+ * @param {string} type - Activity type key (e.g. 'car', 'beef', 'electricity').
+ * @param {object} [params={}] - Activity parameters (km, meals, kwh, hours, items, co2).
+ * @returns {number} CO₂ in kg.
  */
 export function calculateActivity(type, params = {}) {
   switch (type) {
@@ -79,7 +90,10 @@ export function calculateActivity(type, params = {}) {
 }
 
 /**
- * Get total CO₂ for a specific date from logs array
+ * Get total CO₂ for a specific date from a logs array.
+ * @param {Array} logs - Array of log entries with `date` and `co2` fields.
+ * @param {string|Date} date - The date to sum (ISO string or Date object).
+ * @returns {number} Total CO₂ in kg for that date.
  */
 export function getDailyTotal(logs, date) {
   const dateStr = typeof date === 'string' ? date : date.toISOString().split('T')[0];
@@ -89,7 +103,10 @@ export function getDailyTotal(logs, date) {
 }
 
 /**
- * Get last N weeks of daily totals
+ * Get last N weeks of daily totals, ordered from oldest to newest.
+ * @param {Array} logs - Daily log entries.
+ * @param {number} [weeks=4] - Number of weeks to return.
+ * @returns {Array<{ week: string, total: number }>}
  */
 export function getWeeklyTrend(logs, weeks = 4) {
   const result = [];
@@ -98,7 +115,7 @@ export function getWeeklyTrend(logs, weeks = 4) {
   for (let w = weeks - 1; w >= 0; w--) {
     const weekStart = new Date(today);
     weekStart.setDate(today.getDate() - w * 7 - today.getDay());
-    
+
     let weekTotal = 0;
     for (let d = 0; d < 7; d++) {
       const day = new Date(weekStart);
@@ -115,7 +132,11 @@ export function getWeeklyTrend(logs, weeks = 4) {
 }
 
 /**
- * Get category breakdown from logs for a given month
+ * Get category breakdown from logs for the current month.
+ * Falls back to proportional baseline estimates when no logs exist.
+ * @param {Array} logs - Daily log entries.
+ * @param {number|null} baseline - Annual baseline in kg CO₂.
+ * @returns {Array<{ name: string, value: number }>}
  */
 export function getMonthlyCategoryBreakdown(logs, baseline) {
   const now = new Date();
@@ -145,10 +166,11 @@ export function getMonthlyCategoryBreakdown(logs, baseline) {
 }
 
 /**
- * Calculate current streak of green days (below global average daily: 4000/365 ≈ 11 kg/day)
+ * Calculate the current streak of green days (below GREEN_THRESHOLD kg/day).
+ * @param {Array} logs - Daily log entries.
+ * @returns {number} Number of consecutive green days.
  */
 export function calculateStreak(logs) {
-  const GREEN_THRESHOLD = 11; // kg CO₂/day
   const today = new Date();
   let streak = 0;
 
@@ -173,7 +195,9 @@ export function calculateStreak(logs) {
 }
 
 /**
- * Format kg CO₂ nicely
+ * Format a CO₂ quantity with appropriate units (g, kg, or tonnes).
+ * @param {number} kg - Amount in kg.
+ * @returns {string} Human-readable string.
  */
 export function formatCO2(kg) {
   if (kg >= 1000) return `${(kg / 1000).toFixed(2)} t`;
@@ -182,9 +206,12 @@ export function formatCO2(kg) {
 }
 
 /**
- * Get color based on CO₂ intensity
+ * Get a hex color reflecting CO₂ intensity relative to a threshold.
+ * @param {number} kg - Daily CO₂ amount.
+ * @param {number} [threshold=GREEN_THRESHOLD] - Reference threshold in kg.
+ * @returns {string} Hex color string.
  */
-export function getCO2Color(kg, threshold = 11) {
+export function getCO2Color(kg, threshold = GREEN_THRESHOLD) {
   const ratio = kg / threshold;
   if (ratio <= 0.5) return '#52B788';
   if (ratio <= 1) return '#F4A261';

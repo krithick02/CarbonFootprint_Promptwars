@@ -14,48 +14,29 @@ import ActivityCard from '../components/cards/ActivityCard';
 import TipCard from '../components/cards/TipCard';
 import BadgeCard from '../components/cards/BadgeCard';
 import TripPlanner from '../components/log/TripPlanner';
+import { CustomTooltip, LineTooltip, SavingsTooltip } from '../components/charts/Tooltips';
 
 import { useApp } from '../context/AppContext';
 import { QUICK_ACTIVITIES, CATEGORY_COLORS, CATEGORY_LABELS, GLOBAL_BENCHMARKS, CHALLENGES, BADGES } from '../data/constants';
 import { generateTips, FALLBACK_TIPS } from '../utils/claude';
 import { generateTipsGemini } from '../utils/gemini';
 
-// ─── Tooltip helpers ─────────────────────────────────────────────────────────
-const CustomTooltip = ({ active, payload }) => {
-  if (active && payload?.length) {
-    return (
-      <div className="glass rounded-xl px-3 py-2 text-sm">
-        <p className="text-offwhite font-semibold">{payload[0].name}</p>
-        <p className="text-[#52B788]">{payload[0].value} kg CO₂</p>
-      </div>
-    );
-  }
-  return null;
+// ─── Log icon map ─────────────────────────────────────────────────────────────
+/** Maps Lucide icon name strings to emoji equivalents for log entries. */
+const LOG_ICON_MAP = {
+  Car: '🚗',
+  Beef: '🥩',
+  Plane: '✈️',
+  ShoppingBag: '🛍️',
+  Wind: '❄️',
+  Leaf: '🥦',
+  UtensilsCrossed: '🍗',
 };
 
-const LineTooltip = ({ active, payload, label }) => {
-  if (active && payload?.length) {
-    return (
-      <div className="glass rounded-xl px-3 py-2 text-sm">
-        <p className="text-[rgba(248,249,250,0.6)] text-xs">{label}</p>
-        <p className="text-[#52B788] font-semibold">{payload[0].value} kg CO₂</p>
-      </div>
-    );
-  }
-  return null;
-};
-
-const SavingsTooltip = ({ active, payload, label }) => {
-  if (active && payload?.length) {
-    return (
-      <div className="glass rounded-xl px-3 py-2 text-sm">
-        <p className="text-[rgba(248,249,250,0.6)] text-xs">{label}</p>
-        <p className="text-[#52B788] font-semibold">{payload[0].value} kg saved</p>
-      </div>
-    );
-  }
-  return null;
-};
+/** Returns the emoji for a log icon name, falling back to a bus emoji. */
+function getLogEmoji(iconName) {
+  return LOG_ICON_MAP[iconName] ?? '🚌';
+}
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 function Section({ id, children }) {
@@ -87,7 +68,7 @@ export default function MainApp() {
     monthlyFootprint, categoryBreakdown, weeklyTrend,
     streak, baseline, dailyLogs, addLog, removeLog,
     committedActions, commitAction, uncommitAction,
-    completedChallenges, completeChallenge,
+    completedChallenges, completeChallenge, profile,
     badges, totalSavings, apiKey, geminiKey, aiProvider,
   } = useApp();
 
@@ -170,9 +151,9 @@ export default function MainApp() {
     try {
       let result;
       if (aiProvider === 'gemini') {
-        result = await generateTipsGemini({ profile: null, baseline, topCategories, geminiKey });
+        result = await generateTipsGemini({ profile, baseline, topCategories, geminiKey });
       } else {
-        result = await generateTips({ profile: null, baseline, topCategories, apiKey });
+        result = await generateTips({ profile, baseline, topCategories, apiKey });
       }
       setTips(result);
       setTipsGenerated(true);
@@ -292,7 +273,13 @@ export default function MainApp() {
                             <span className="font-semibold text-offwhite">{e.value} kg</span>
                           </div>
                           <div className="progress-bar">
-                            <div className="progress-bar-fill" style={{ width: `${monthlyFootprint > 0 ? (e.value / monthlyFootprint) * 100 : 0}%`, background: e.fill }} />
+                            <div className="progress-bar-fill"
+                              role="progressbar"
+                              aria-valuenow={monthlyFootprint > 0 ? Math.round((e.value / monthlyFootprint) * 100) : 0}
+                              aria-valuemin={0}
+                              aria-valuemax={100}
+                              aria-label={`${e.name} share`}
+                              style={{ width: `${monthlyFootprint > 0 ? (e.value / monthlyFootprint) * 100 : 0}%`, background: e.fill }} />
                           </div>
                         </div>
                       ))}
@@ -338,7 +325,13 @@ export default function MainApp() {
                       </div>
                     </div>
                     <div className="progress-bar h-3">
-                      <div className="progress-bar-fill h-full rounded-full" style={{ width: `${Math.min((bar.value / 700) * 100, 100)}%`, background: bar.color }} />
+                      <div className="progress-bar-fill h-full rounded-full"
+                        role="progressbar"
+                        aria-valuenow={Math.round(Math.min((bar.value / 700) * 100, 100))}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label={`${bar.label}: ${bar.value.toFixed(0)} kg per month`}
+                        style={{ width: `${Math.min((bar.value / 700) * 100, 100)}%`, background: bar.color }} />
                     </div>
                   </div>
                 ))}
@@ -397,6 +390,7 @@ export default function MainApp() {
                       <div className="flex gap-1 flex-wrap">
                         {['all', 'transport', 'food', 'energy', 'shopping'].map((cat) => (
                           <button key={cat} onClick={() => setLogFilter(cat)}
+                            aria-pressed={logFilter === cat}
                             className={`px-3 py-1 rounded-full text-xs font-medium transition-all capitalize ${logFilter === cat ? 'bg-[#52B788] text-white' : 'text-[rgba(248,249,250,0.5)] border border-[rgba(82,183,136,0.2)] hover:text-[#52B788]'}`}>
                             {cat}
                           </button>
@@ -425,7 +419,7 @@ export default function MainApp() {
                     {todayLogs.map((log) => (
                       <div key={log.id} className="card p-3 flex items-center gap-3 hover:border-red-400/30 group">
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-sm" style={{ background: `${log.color || '#52B788'}22` }}>
-                          {log.icon === 'Car' ? '🚗' : log.icon === 'Beef' ? '🥩' : log.icon === 'Plane' ? '✈️' : log.icon === 'ShoppingBag' ? '🛍️' : log.icon === 'Wind' ? '❄️' : log.icon === 'Leaf' ? '🥦' : log.icon === 'UtensilsCrossed' ? '🍗' : '🚌'}
+                          {getLogEmoji(log.icon)}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-offwhite truncate">{log.label}</p>
@@ -435,8 +429,12 @@ export default function MainApp() {
                           <p className="text-sm font-bold text-[#F4A261]">+{log.co2.toFixed(1)}</p>
                           <p className="text-xs text-[rgba(248,249,250,0.3)]">kg CO₂</p>
                         </div>
-                        <button onClick={() => removeLog(log.id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400/60 hover:text-red-400 p-1">
-                          <Trash2 size={13} />
+                        <button
+                          onClick={() => removeLog(log.id)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400/60 hover:text-red-400 p-1"
+                          aria-label={`Remove ${log.label} activity`}
+                        >
+                          <Trash2 size={13} aria-hidden="true" />
                         </button>
                       </div>
                     ))}
@@ -601,8 +599,8 @@ export default function MainApp() {
               <div className="flex items-center justify-between mb-5">
                 <p className="font-semibold text-offwhite text-sm">Daily Footprint Heatmap</p>
                 <div className="flex items-center gap-2">
-                  <button onClick={prevCal} className="w-7 h-7 rounded-lg flex items-center justify-center text-[#52B788] border border-[rgba(82,183,136,0.3)] hover:border-[#52B788] hover:bg-[rgba(82,183,136,0.1)] transition-all"><ChevronLeft size={14} /></button>
-                  <button onClick={nextCal} className="w-7 h-7 rounded-lg flex items-center justify-center text-[#52B788] border border-[rgba(82,183,136,0.3)] hover:border-[#52B788] hover:bg-[rgba(82,183,136,0.1)] transition-all disabled:opacity-30" disabled={calYear === new Date().getFullYear() && calMonth === new Date().getMonth()}><ChevronRight size={14} /></button>
+                  <button onClick={prevCal} aria-label="Previous month" className="w-7 h-7 rounded-lg flex items-center justify-center text-[#52B788] border border-[rgba(82,183,136,0.3)] hover:border-[#52B788] hover:bg-[rgba(82,183,136,0.1)] transition-all"><ChevronLeft size={14} aria-hidden="true" /></button>
+                  <button onClick={nextCal} aria-label="Next month" className="w-7 h-7 rounded-lg flex items-center justify-center text-[#52B788] border border-[rgba(82,183,136,0.3)] hover:border-[#52B788] hover:bg-[rgba(82,183,136,0.1)] transition-all disabled:opacity-30" disabled={calYear === new Date().getFullYear() && calMonth === new Date().getMonth()}><ChevronRight size={14} aria-hidden="true" /></button>
                 </div>
               </div>
               <HeatmapCalendar logs={dailyLogs} year={calYear} month={calMonth} />

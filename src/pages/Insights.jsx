@@ -5,6 +5,7 @@ import { useApp } from '../context/AppContext';
 import Layout from '../components/layout/Layout';
 import TipCard from '../components/cards/TipCard';
 import { generateTips, FALLBACK_TIPS } from '../utils/claude';
+import { generateTipsGemini } from '../utils/gemini';
 import { CHALLENGES, CATEGORY_COLORS } from '../data/constants';
 
 const DIFF_STYLES = {
@@ -15,7 +16,8 @@ const DIFF_STYLES = {
 
 export default function Insights() {
   const {
-    apiKey, categoryBreakdown, profile, baseline,
+    apiKey, geminiKey, aiProvider,
+    categoryBreakdown, profile, baseline,
     committedActions, commitAction, uncommitAction,
     completedChallenges, completeChallenge,
   } = useApp();
@@ -33,12 +35,12 @@ export default function Insights() {
     setLoading(true);
     setError(null);
     try {
-      const result = await generateTips({
-        profile,
-        baseline,
-        topCategories,
-        apiKey,
-      });
+      let result;
+      if (aiProvider === 'gemini') {
+        result = await generateTipsGemini({ profile, baseline, topCategories, geminiKey });
+      } else {
+        result = await generateTips({ profile, baseline, topCategories, apiKey });
+      }
       setTips(result);
       setGenerated(true);
     } catch (err) {
@@ -63,7 +65,7 @@ export default function Insights() {
     <Layout>
       {/* Header */}
       <div className="mb-8">
-        <h1 className="font-display font-bold text-3xl text-offwhite mb-1">Insights & Actions</h1>
+        <h1 className="font-display font-bold text-3xl text-offwhite mb-1">Insights &amp; Actions</h1>
         <p className="text-[rgba(248,249,250,0.5)] text-sm">AI-powered tips personalized to your emission profile</p>
       </div>
 
@@ -102,12 +104,16 @@ export default function Insights() {
           <h2 className="font-semibold text-offwhite flex items-center gap-2">
             <Sparkles size={18} className="text-mint" />
             AI-Powered Tips
+            <span className="ml-2 px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-[rgba(82,183,136,0.15)] text-mint border border-[rgba(82,183,136,0.3)]">
+              {aiProvider === 'gemini' ? 'Gemini 1.5' : 'Claude 3.5'}
+            </span>
           </h2>
           {generated && (
             <button
               onClick={handleGenerate}
               disabled={loading}
               className="flex items-center gap-1.5 text-xs text-mint border border-mint/30 hover:border-mint px-3 py-1.5 rounded-lg transition-all"
+              aria-label="Regenerate AI tips"
             >
               <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
               Regenerate
@@ -117,12 +123,12 @@ export default function Insights() {
 
         {/* Error banner */}
         {error && (
-          <div className="mb-4 p-4 rounded-xl bg-[rgba(244,162,97,0.1)] border border-[rgba(244,162,97,0.3)] flex items-start gap-3">
+          <div className="mb-4 p-4 rounded-xl bg-[rgba(244,162,97,0.1)] border border-[rgba(244,162,97,0.3)] flex items-start gap-3" role="alert">
             {error === 'no_key' ? <Key size={16} className="text-amber-carbon mt-0.5 flex-shrink-0" /> : <AlertCircle size={16} className="text-amber-carbon mt-0.5 flex-shrink-0" />}
             <div>
               {error === 'no_key' && (
                 <p className="text-sm text-amber-carbon">
-                  <strong>No API key found.</strong> Showing sample tips below. Add your Anthropic API key in Settings to get personalized tips.
+                  <strong>No API key found.</strong> Showing sample tips below. Add your {aiProvider === 'gemini' ? 'Gemini' : 'Anthropic'} API key in Settings to get personalized tips.
                 </p>
               )}
               {error === 'invalid_key' && (
@@ -147,7 +153,7 @@ export default function Insights() {
             </div>
             <h3 className="font-display font-bold text-xl text-offwhite mb-2">Get Personalized Tips</h3>
             <p className="text-[rgba(248,249,250,0.5)] text-sm mb-6 max-w-sm mx-auto">
-              Claude AI will analyze your emission profile and generate tailored recommendations to reduce your carbon footprint.
+              {aiProvider === 'gemini' ? 'Gemini AI' : 'Claude AI'} will analyze your emission profile and generate tailored recommendations to reduce your carbon footprint.
             </p>
             <button onClick={handleGenerate} className="btn-primary flex items-center gap-2 mx-auto">
               <Sparkles size={16} />
@@ -158,7 +164,7 @@ export default function Insights() {
 
         {/* Loading skeleton */}
         {loading && (
-          <div className="space-y-4">
+          <div className="space-y-4" aria-busy="true" aria-label="Loading personalized tips">
             {[1, 2, 3].map((i) => (
               <div key={i} className="card p-5">
                 <div className="flex items-center gap-3 mb-3">
@@ -219,7 +225,7 @@ export default function Insights() {
                       className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                       style={{ background: `${catColor}22`, border: `1px solid ${catColor}44` }}
                     >
-                      <IconComponent size={18} style={{ color: catColor }} />
+                      <IconComponent size={18} style={{ color: catColor }} aria-hidden="true" />
                     </div>
                     <div>
                       <h3 className="font-semibold text-offwhite text-sm">{challenge.title}</h3>
@@ -240,6 +246,9 @@ export default function Insights() {
                   </p>
                   <button
                     onClick={() => !done && completeChallenge(challenge.id)}
+                    disabled={done}
+                    aria-pressed={done}
+                    aria-label={done ? `${challenge.title} completed` : `Accept challenge: ${challenge.title}`}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300 ${
                       done
                         ? 'bg-mint/20 text-mint border border-mint/40 cursor-default'

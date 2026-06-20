@@ -1,6 +1,7 @@
-import { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
+import { createContext, useContext, useReducer, useEffect, useCallback, useMemo } from 'react';
 import { storage, DEFAULT_STATE } from '../utils/storage';
 import { calculateBaseline, calculateStreak, getMonthlyCategoryBreakdown, getWeeklyTrend } from '../utils/emissions';
+import { sanitizeLogEntry } from '../utils/sanitize';
 import { BADGES } from '../data/constants';
 
 const AppContext = createContext(null);
@@ -96,25 +97,38 @@ export function AppProvider({ children }) {
     storage.set(state);
   }, [state]);
 
-  // Badge evaluation
+  // Badge evaluation — wrapped in try/catch to guard against bad criteria functions
   useEffect(() => {
     BADGES.forEach((badge) => {
-      if (!state.badges.includes(badge.id) && badge.criteria(state)) {
-        dispatch({ type: 'EARN_BADGE', payload: badge.id });
+      try {
+        if (!state.badges.includes(badge.id) && badge.criteria(state)) {
+          dispatch({ type: 'EARN_BADGE', payload: badge.id });
+        }
+      } catch {
+        // silently ignore criteria evaluation failures
       }
     });
   }, [state]);
 
-  // ─── Computed Values ──────────────────────────────────────────────────────
-  const streak = calculateStreak(state.dailyLogs);
+  // ─── Computed Values (memoised to avoid re-computation on unrelated renders) ─
+  const streak = useMemo(() => calculateStreak(state.dailyLogs), [state.dailyLogs]);
 
-  const categoryBreakdown = getMonthlyCategoryBreakdown(state.dailyLogs, state.baseline);
+  const categoryBreakdown = useMemo(
+    () => getMonthlyCategoryBreakdown(state.dailyLogs, state.baseline),
+    [state.dailyLogs, state.baseline]
+  );
 
-  const monthlyFootprint = categoryBreakdown.reduce((sum, c) => sum + c.value, 0);
+  const monthlyFootprint = useMemo(
+    () => categoryBreakdown.reduce((sum, c) => sum + c.value, 0),
+    [categoryBreakdown]
+  );
 
-  const weeklyTrend = getWeeklyTrend(state.dailyLogs);
+  const weeklyTrend = useMemo(() => getWeeklyTrend(state.dailyLogs), [state.dailyLogs]);
 
-  const totalSavings = state.committedActions.reduce((sum, a) => sum + (a.saving || 0), 0);
+  const totalSavings = useMemo(
+    () => state.committedActions.reduce((sum, a) => sum + (a.saving || 0), 0),
+    [state.committedActions]
+  );
 
   // ─── Actions ──────────────────────────────────────────────────────────────
   const completeOnboarding = useCallback((profileData) => {
@@ -122,11 +136,13 @@ export function AppProvider({ children }) {
   }, []);
 
   const addLog = useCallback((entry) => {
+    // Sanitize entry fields before storing to prevent data corruption
+    const safe = sanitizeLogEntry(entry);
     const log = {
       id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
       date: new Date().toISOString().split('T')[0],
       timestamp: new Date().toISOString(),
-      ...entry,
+      ...safe,
     };
     dispatch({ type: 'ADD_LOG', payload: log });
   }, []);
@@ -136,9 +152,10 @@ export function AppProvider({ children }) {
   }, []);
 
   const commitAction = useCallback((tip) => {
+    if (!tip?.id) return;
     dispatch({
       type: 'COMMIT_ACTION',
-      payload: { tipId: tip.id, title: tip.title, saving: tip.monthlySaving },
+      payload: { tipId: tip.id, title: tip.title || '', saving: tip.monthlySaving || 0 },
     });
   }, []);
 

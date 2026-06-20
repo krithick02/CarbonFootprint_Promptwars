@@ -8,31 +8,9 @@ import {
 import { useApp } from '../context/AppContext';
 import Layout from '../components/layout/Layout';
 import GaugeChart from '../components/charts/GaugeChart';
+import { CustomTooltip, LineTooltip } from '../components/charts/Tooltips';
 import { CATEGORY_COLORS, CATEGORY_LABELS, GLOBAL_BENCHMARKS } from '../data/constants';
 
-const CustomTooltip = ({ active, payload }) => {
-  if (active && payload?.length) {
-    return (
-      <div className="glass rounded-xl px-3 py-2 text-sm">
-        <p className="text-offwhite font-semibold">{payload[0].name}</p>
-        <p className="text-mint">{payload[0].value} kg CO₂</p>
-      </div>
-    );
-  }
-  return null;
-};
-
-const LineTooltip = ({ active, payload, label }) => {
-  if (active && payload?.length) {
-    return (
-      <div className="glass rounded-xl px-3 py-2 text-sm">
-        <p className="text-[rgba(248,249,250,0.6)] text-xs">{label}</p>
-        <p className="text-mint font-semibold">{payload[0].value} kg CO₂</p>
-      </div>
-    );
-  }
-  return null;
-};
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -189,6 +167,11 @@ export default function Dashboard() {
                       <div className="progress-bar">
                         <div
                           className="progress-bar-fill"
+                          role="progressbar"
+                          aria-valuenow={monthlyFootprint > 0 ? Math.round((entry.value / monthlyFootprint) * 100) : 0}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-label={`${entry.name} share of monthly footprint`}
                           style={{
                             width: `${monthlyFootprint > 0 ? (entry.value / monthlyFootprint) * 100 : 0}%`,
                             background: entry.fill,
@@ -277,6 +260,11 @@ export default function Dashboard() {
               <div className="progress-bar h-3">
                 <div
                   className="progress-bar-fill h-full rounded-full"
+                  role="progressbar"
+                  aria-valuenow={Math.round(Math.min((bar.value / 700) * 100, 100))}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label={`${bar.label}: ${bar.value.toFixed(0)} kg per month`}
                   style={{
                     width: `${Math.min((bar.value / 700) * 100, 100)}%`,
                     background: bar.color,
